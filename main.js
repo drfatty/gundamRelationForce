@@ -107,6 +107,29 @@ Promise.all([
             d.fx = null;
             d.fy = null;
         }
+
+        // 新增搜尋功能
+        d3.select("#search-button").on("click", () => {
+            const searchTerm = d3.select("#search-input").property("value");
+            const targetNode = nodesData.find(node => node.id === searchTerm);
+
+            if (targetNode) {
+                // 將節點鎖定在畫面中央
+                targetNode.fx = width / 2;
+                targetNode.fy = height / 2;
+
+                // 更新模擬，以便將節點移動到中央
+                simulation.alpha(1).restart();
+
+                // 在一段時間後釋放節點
+                setTimeout(() => {
+                    targetNode.fx = null;
+                    targetNode.fy = null;
+                }, 2000);
+            } else {
+                alert("未找到該ID的節點");
+            }
+        });
     }
 
     updateGraph();
