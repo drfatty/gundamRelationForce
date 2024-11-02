@@ -20,6 +20,46 @@
             width: 100vw;
             height: 100vh;
         }
+		#sidebar {
+			width: 200px;
+			height: 100vh;
+			position: fixed;
+			top: 0;
+			left: -200px; /* 隱藏側邊欄 */
+			background-color: #f4f4f4;
+			overflow-y: auto;
+			transition: left 0.3s ease;
+			z-index: 10;
+		}
+
+		#sidebar.visible {
+			left: 0;
+		}
+
+		#toggle-sidebar {
+			position: fixed; /* 固定定位於頁面 */
+			top: 20px;
+			left: 10px; /* 確保按鈕在頁面左側顯示 */
+			background-color: #007bff;
+			color: white;
+			border: none;
+			padding: 10px;
+			cursor: pointer;
+			z-index: 20; /* 保證按鈕顯示在最上層 */
+		}
+
+		#node-list {
+			list-style: none;
+			padding: 20px;
+			margin: 0;
+		}
+
+		#node-list li {
+			padding: 10px;
+			cursor: pointer;
+		}
+
+
     </style>
 </head>
 <body>
@@ -37,6 +77,11 @@
             <input type="checkbox" id="toggle-opacity">
         </div>
     </div>
+	<div id="sidebar">
+		<button id="toggle-sidebar">顯示/隱藏 節點列表</button>
+		<ul id="node-list"></ul>
+	</div>
+	
     <svg></svg>
     <!-- 先引入 helpers.js -->
     <script src="helpers.js"></script>

@@ -12,9 +12,13 @@ function dragged(event, d) {
 
 function dragended(event, d) {
     if (!event.active) simulation.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
+    // 如果該節點的 checkbox 是選中的，保持固定
+    if (!d3.select(`#checkbox-${d.id}`).property("checked")) {
+        d.fx = null;
+        d.fy = null;
+    }
 }
+
 
 // 其他常用函數也可以放到這裡，這樣可以在主文件中簡化代碼
 // 比如 updateDisplayMode 或其他通用函數
@@ -48,7 +52,8 @@ function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
     const visitedNodes = new Set();
     const queue = [[centralNode, 0]]; 
 
-    linkCounts = {}; // 重置 linkCounts
+    // 計算每個節點的連線數
+    linkCounts = {}; 
     nodesData.forEach(node => {
         linkCounts[node.id] = 0;
     });
@@ -57,6 +62,7 @@ function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
         linkCounts[link.target.id]++;
     });
 
+    // BFS 算法計算層級
     while (queue.length > 0) {
         const [node, layer] = queue.shift();
 
@@ -74,6 +80,7 @@ function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
         }
     }
 
+    // 更新節點和連線的透明度
     d3.selectAll("circle.node").style("opacity", d => {
         const layer = layers[d.id] || 0;
         const linkCount = linkCounts[d.id] || 0;
@@ -100,5 +107,75 @@ function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
         return 1 - avgLayer * 0.1;
     });
 
+    // 在更新 `linkCounts` 之後生成節點列表
+    createNodeList(nodesData);
+
     updateDisplayMode();
 }
+
+
+// 生成節點列表
+function createNodeList(nodesData) {
+    nodesData.sort((a, b) => (linkCounts[b.id] || 0) - (linkCounts[a.id] || 0));
+
+    const nodeList = d3.select("#node-list");
+    nodeList.selectAll("li").remove();
+
+    nodesData.forEach(node => {
+        const listItem = nodeList.append("li");
+
+        // 添加 checkbox 作為開關
+        listItem.append("input")
+            .attr("type", "checkbox")
+            .attr("id", `checkbox-${node.id}`)
+            .on("change", function() {
+                const isChecked = d3.select(this).property("checked");
+                toggleNodeFixedState(node, isChecked);
+            });
+
+        // 顯示節點 ID 和連線數
+        listItem.append("label")
+            .attr("for", `checkbox-${node.id}`)
+            .text(`${node.id} (${linkCounts[node.id] || 0})`);
+    });
+}
+
+function toggleNodeFixedState(node, isFixed) {
+    if (isFixed) {
+        // 設置 fx 和 fy 固定位置
+        node.fx = node.x;
+        node.fy = node.y;
+    } else {
+        // 解除 fx 和 fy，使其再次受力導向影響
+        node.fx = null;
+        node.fy = null;
+    }
+}
+
+// 將選定節點移動到垂直居中
+function centerNode(selectedNode, nodesData, isFixed) {
+    if (isFixed) {
+        // 將選定節點的 Y 值固定在畫面垂直居中
+        selectedNode.fy = height / 2;
+    } else {
+        // 取消 Y 值固定
+        selectedNode.fy = null;
+    }
+
+    // 保持其他節點的 Y 值未固定
+    nodesData.forEach(node => {
+        if (node !== selectedNode && !d3.select(`#checkbox-${node.id}`).property("checked")) {
+            node.fy = null;
+        }
+    });
+
+    // 重新啟動模擬
+    simulation.alpha(1).restart();
+}
+
+
+// 顯示/隱藏側邊欄
+d3.select("#toggle-sidebar").on("click", () => {
+    const sidebar = d3.select("#sidebar");
+    sidebar.classed("visible", !sidebar.classed("visible"));
+});
