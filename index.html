@@ -4,20 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Force Directed Graph</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+		console.log("main.js is loaded");
+	</script>
+
+	
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        svg {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
 </head>
 <body>
-    <h1>力導向圖</h1>
-    <div id="search-container">
-        <label for="search-input">搜尋個體 ID：</label>
-        <input type="text" id="search-input" placeholder="輸入ID">
-        <button id="search-button">搜尋</button>
+    <div id="controls" style="position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.8); padding: 10px; border-radius: 5px;">
+        <div id="search-container">
+            <label for="search-input">搜尋個體 ID：</label>
+            <input type="text" id="search-input" placeholder="輸入ID">
+            <button id="search-button">搜尋</button>
+        </div>
+        <div id="relation-filters">
+            <label>關係篩選：</label>
+        </div>
+        <div id="opacity-toggle" style="margin-top: 10px;">
+            <label for="toggle-opacity">顯示透明度</label>
+            <input type="checkbox" id="toggle-opacity">
+        </div>
     </div>
-    <div id="relation-filters">
-        <label>關係篩選：</label>
-        <!-- Checkboxes will be dynamically added here -->
-    </div>
-    <svg width="800" height="600"></svg>
+    <svg></svg>
     <script src="main.js"></script>
 </body>
 </html>
