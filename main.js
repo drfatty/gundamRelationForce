@@ -3,6 +3,7 @@ let width = window.innerWidth;
 let height = window.innerHeight;
 
 let simulation;
+let layers = {}; // 全局變數來存儲層數信息
 
 svg.attr("width", width).attr("height", height);
 
@@ -25,6 +26,7 @@ function updateDisplayMode() {
         d3.selectAll("text.node-text").text(function(d) {
             const opacity = d3.select(`circle#${CSS.escape(d.id)}`).style("opacity"); // 使用CSS.escape來處理特殊字符
             return parseFloat(opacity).toFixed(2);
+        d3.selectAll("text.node-text").text(d => {
         });
 
         // 顯示線段的透明度
