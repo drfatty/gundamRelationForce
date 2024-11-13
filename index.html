@@ -82,7 +82,14 @@
 		<ul id="node-list"></ul>
 	</div>
 	
-    <svg></svg>
+    <svg>
+		<defs>
+			<filter id="test-blur">
+				<feGaussianBlur stdDeviation="5" />
+			</filter>
+		</defs>
+	</svg>
+
     <!-- 先引入 helpers.js -->
     <script src="helpers.js"></script>
     <!-- 再引入 main.js -->

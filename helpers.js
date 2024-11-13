@@ -48,6 +48,7 @@ function updateDisplayMode() {
 }
 
 function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
+    // 初始化層級和訪問集合
     layers = {}; 
     const visitedNodes = new Set();
     const queue = [[centralNode, 0]]; 
@@ -62,7 +63,7 @@ function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
         linkCounts[link.target.id]++;
     });
 
-    // BFS 算法計算層級
+    // BFS 算法計算節點層數
     while (queue.length > 0) {
         const [node, layer] = queue.shift();
 
@@ -80,36 +81,68 @@ function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
         }
     }
 
-    // 更新節點和連線的透明度
+    // 設置節點透明度和模糊
     d3.selectAll("circle.node").style("opacity", d => {
         const layer = layers[d.id] || 0;
         const linkCount = linkCounts[d.id] || 0;
-        return linkCount === 0 ? 0.3 : 1 - layer * 0.25;
+        const opacity = linkCount === 0 ? 0.3 : 1 - layer * 0.2;
+        
+        // 動態設置模糊值
+        const blurValue = (1 - opacity) * 10;
+        const filterId = `blur-${d.id}`;
+
+        // 確保在 <defs> 中創建或更新相應的濾鏡，並設置擴展邊界
+        let filter = d3.select("defs").select(`#${CSS.escape(filterId)}`);
+        if (filter.empty()) {
+            filter = d3.select("defs")
+                .append("filter")
+                .attr("id", filterId)
+                .attr("x", "-30%")
+                .attr("y", "-30%")
+                .attr("width", "160%")
+                .attr("height", "160%");
+                
+            filter.append("feGaussianBlur").attr("stdDeviation", blurValue);
+        } else {
+            filter.select("feGaussianBlur").attr("stdDeviation", blurValue);
+        }
+
+        // 將濾鏡應用到節點
+        d3.select(`#${CSS.escape(d.id)}`).style("filter", `url(#${filterId})`);
+        
+        return opacity;
     });
 
+    // 設置文本透明度和模糊
     d3.selectAll("text.node-text").style("opacity", d => {
         const layer = layers[d.id] || 0;
         const linkCount = linkCounts[d.id] || 0;
-        return linkCount === 0 ? 0.3 : 1 - layer * 0.25;
+        const opacity = linkCount === 0 ? 0.3 : 1 - layer * 0.2;
+
+        const blurValue = (1 - opacity) * 10;
+        const filterId = `blur-text-${d.id}`;
+        
+        let filter = d3.select("defs").select(`#${CSS.escape(filterId)}`);
+        if (filter.empty()) {
+            filter = d3.select("defs")
+                .append("filter")
+                .attr("id", filterId)
+                .attr("x", "-30%")
+                .attr("y", "-30%")
+                .attr("width", "160%")
+                .attr("height", "160%");
+                
+            filter.append("feGaussianBlur").attr("stdDeviation", blurValue);
+        } else {
+            filter.select("feGaussianBlur").attr("stdDeviation", blurValue);
+        }
+
+        d3.select(`#${CSS.escape(d.id)}`).style("filter", `url(#${filterId})`);
+        
+        return opacity;
     });
-
-    d3.selectAll("line.link-text").style("stroke-opacity", d => {
-        const sourceLayer = layers[d.source.id] || 0;
-        const targetLayer = layers[d.target.id] || 0;
-        const avgLayer = (sourceLayer + targetLayer) / 2;
-        return 0.8 - avgLayer * 0.25;
-    });
-
-    d3.selectAll("text.link-text").style("opacity", d => {
-        const sourceLayer = layers[d.source.id] || 0;
-        const targetLayer = layers[d.target.id] || 0;
-        const avgLayer = (sourceLayer + targetLayer) / 2;
-        return 1 - avgLayer * 0.1;
-    });
-
-    // 在更新 `linkCounts` 之後生成節點列表
-    createNodeList(nodesData);
-
+    
+    // 更新顯示模式
     updateDisplayMode();
 }
 
