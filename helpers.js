@@ -141,6 +141,16 @@ function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
         
         return opacity;
     });
+	
+	// 設置節點透明度並保存到 data-opacity 屬性
+    d3.selectAll("circle.node")
+        .style("opacity", d => {
+            const layer = layers[d.id] || 0;
+            const linkCount = linkCounts[d.id] || 0;
+            const opacity = linkCount === 0 ? 0.3 : 1 - layer * 0.25;
+            d3.select(`#${CSS.escape(d.id)}`).attr("data-opacity", opacity);
+            return opacity;
+        });
     
     // 更新顯示模式
     updateDisplayMode();

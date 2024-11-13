@@ -59,19 +59,33 @@ Promise.all([
         .force("x", d3.forceX(width / 2).strength(0.1))
         .force("y", d3.forceY(height / 2).strength(0.1));
 
-    // 更新連線
-    const link = svg.append("g")
+   const link = svg.append("g")
         .attr("class", "links")
         .selectAll("line")
         .data(filteredLinks)
         .enter().append("line")
         .attr("stroke-width", 2)
         .attr("stroke", "#999")
-        .style("stroke-opacity", 0.3)
+        .style("stroke-opacity", d => {
+            const sourceNode = d3.select(`#${CSS.escape(d.source.id)}`);
+            const sourceOpacity = sourceNode.empty() ? 0.3 : sourceNode.attr("data-opacity");
+            return sourceOpacity;
+        })
         .attr("class", "link-text")
-        .attr("id", d => `${CSS.escape(d.source.id)}-${CSS.escape(d.target.id)}`);
+        .attr("id", d => `${CSS.escape(d.source.id)}-${CSS.escape(d.target.id)}`)
+        .attr("marker-end", d => {
+            if (d.direction === "AB" || d.direction === "ABBA") {
+                return "url(#arrow-end)";
+            }
+            return null;
+        })
+        .attr("marker-start", d => {
+            if (d.direction === "ABBA") {
+                return "url(#arrow-start)";
+            }
+            return null;
+        });
 
-    // 更新連線文字
     const linkText = svg.append("g")
         .attr("class", "texts")
         .selectAll("text")
@@ -168,9 +182,8 @@ Promise.all([
     });
 }
 
-	// 初始化濾鏡
-    initializeFilters(); // 確保濾鏡在節點渲染之前已經設置
-	
+    initializeFilters(); // 初始化濾鏡，確保濾鏡在節點渲染之前已經設置
+	initializeArrows();  // 定義箭頭
     updateGraph();
 
 }).catch(error => {
@@ -180,7 +193,7 @@ Promise.all([
 function initializeFilters() {
     const defs = d3.select("svg").append("defs");
 	
-	console.log("模糊預設值啟動");
+	//console.log("模糊預設值啟動");
 	
     for (let i = 1; i <= 10; i++) {
         const opacityLevel = i / 10;
@@ -191,4 +204,38 @@ function initializeFilters() {
             .append("feGaussianBlur")
             .attr("stdDeviation", blurValue);
     }
+}
+
+function initializeArrows() {
+    let defs = d3.select("svg").select("defs");
+
+    // 如果 defs 不存在，先創建它
+    if (defs.empty()) {
+        defs = d3.select("svg").append("defs");
+    }
+
+    // 定義箭頭標記，讓 refX 為 15 以遠離節點
+    defs.append("marker")
+        .attr("id", "arrow-end")
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", 15)  // 增大 refX 讓箭頭遠離節點
+        .attr("refY", 0)
+        .attr("markerWidth", 6)
+        .attr("markerHeight", 6)
+        .attr("orient", "auto")
+        .append("path")
+        .attr("d", "M0,-5L10,0L0,5")
+        .attr("fill", "#999");
+
+    defs.append("marker")
+        .attr("id", "arrow-start")
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", -5)  // 調整 refX 讓箭頭在起點遠離節點
+        .attr("refY", 0)
+        .attr("markerWidth", 6)
+        .attr("markerHeight", 6)
+        .attr("orient", "auto")
+        .append("path")
+        .attr("d", "M10,-5L0,0L10,5")
+        .attr("fill", "#999");
 }
