@@ -48,22 +48,31 @@ function updateDisplayMode() {
 }
 
 function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
-    // 初始化層級和訪問集合
     layers = {}; 
     const visitedNodes = new Set();
     const queue = [[centralNode, 0]]; 
 
-    // 計算每個節點的連線數
+    // 初始化 linkCounts
     linkCounts = {}; 
     nodesData.forEach(node => {
         linkCounts[node.id] = 0;
     });
+
+    // 计算连线计数
     linksData.forEach(link => {
-        linkCounts[link.source.id]++;
-        linkCounts[link.target.id]++;
+        if (link.source && link.target) {
+            linkCounts[link.source.id] = (linkCounts[link.source.id] || 0) + 1;
+            linkCounts[link.target.id] = (linkCounts[link.target.id] || 0) + 1;
+        }
     });
 
-    // BFS 算法計算節點層數
+    // 将连线计数保存到节点对象
+    nodesData.forEach(node => {
+        node.linkCount = linkCounts[node.id] || 0;
+    });
+
+
+    // 使用 BFS 算法計算節點層數
     while (queue.length > 0) {
         const [node, layer] = queue.shift();
 
@@ -81,17 +90,19 @@ function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
         }
     }
 
-    // 設置節點透明度和模糊
+    // 設置節點的透明度並將其存儲在節點對象上
     d3.selectAll("circle.node").style("opacity", d => {
         const layer = layers[d.id] || 0;
         const linkCount = linkCounts[d.id] || 0;
         const opacity = linkCount === 0 ? 0.3 : 1 - layer * 0.2;
+
+        // 在節點數據對象上直接設置 opacity
+        d.opacity = opacity;
         
-        // 動態設置模糊值
+        // 動態設置模糊濾鏡
         const blurValue = (1 - opacity) * 10;
         const filterId = `blur-${d.id}`;
-
-        // 確保在 <defs> 中創建或更新相應的濾鏡，並設置擴展邊界
+        
         let filter = d3.select("defs").select(`#${CSS.escape(filterId)}`);
         if (filter.empty()) {
             filter = d3.select("defs")
@@ -107,18 +118,18 @@ function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
             filter.select("feGaussianBlur").attr("stdDeviation", blurValue);
         }
 
-        // 將濾鏡應用到節點
         d3.select(`#${CSS.escape(d.id)}`).style("filter", `url(#${filterId})`);
         
         return opacity;
     });
 
-    // 設置文本透明度和模糊
+    // 設置文本透明度和模糊濾鏡
     d3.selectAll("text.node-text").style("opacity", d => {
         const layer = layers[d.id] || 0;
         const linkCount = linkCounts[d.id] || 0;
         const opacity = linkCount === 0 ? 0.3 : 1 - layer * 0.2;
 
+        // 動態設置文本模糊濾鏡
         const blurValue = (1 - opacity) * 10;
         const filterId = `blur-text-${d.id}`;
         
@@ -141,19 +152,11 @@ function calculateLayersAndSetOpacity(centralNode, nodesData, linksData) {
         
         return opacity;
     });
-	
-	// 設置節點透明度並保存到 data-opacity 屬性
-    d3.selectAll("circle.node")
-        .style("opacity", d => {
-            const layer = layers[d.id] || 0;
-            const linkCount = linkCounts[d.id] || 0;
-            const opacity = linkCount === 0 ? 0.3 : 1 - layer * 0.25;
-            d3.select(`#${CSS.escape(d.id)}`).attr("data-opacity", opacity);
-            return opacity;
-        });
-    
+
     // 更新顯示模式
     updateDisplayMode();
+	console.log(nodesData.map(node => ({ id: node.id, linkCount: node.linkCount })));
+
 }
 
 
@@ -222,3 +225,22 @@ d3.select("#toggle-sidebar").on("click", () => {
     const sidebar = d3.select("#sidebar");
     sidebar.classed("visible", !sidebar.classed("visible"));
 });
+
+function updateNodeList() {
+    // 获取按 linkCount 排序的节点数据
+    const sortedNodes = [...nodesData].sort((a, b) => b.linkCount - a.linkCount);
+
+    // 选择节点列表容器
+    const nodeList = d3.select("#node-list"); // 确保容器 ID 为 node-list
+    nodeList.selectAll("*").remove(); // 清空现有内容
+
+    // 生成每个节点项
+    sortedNodes.forEach(node => {
+        nodeList.append("div")
+            .attr("class", "node-item")
+            .text(`${node.id} (連線數: ${node.linkCount || 0})`)
+            .on("click", () => {
+                centerNode(node); // 将节点居中
+            });
+    });
+}

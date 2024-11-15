@@ -6,6 +6,10 @@ let simulation;
 let layers = {}; // 全局變數來存儲層數信息
 let linkCounts = {}; // 全局變數來存儲連線數信息
 
+// 将 nodesData 和 linksData 声明为全局变量
+let nodesData, linksData;
+
+
 svg.attr("width", width).attr("height", height);
 
 window.addEventListener("resize", () => {
@@ -21,10 +25,21 @@ window.addEventListener("resize", () => {
 Promise.all([
     d3.json("invData.json"),
     d3.json("relationData.json")
-]).then(([nodesData, linksData]) => {
-	// 在這裡傳入 `nodesData`，生成節點列表
-    createNodeList(nodesData);
+]).then(([loadedNodesData, loadedLinksData]) => {
+    nodesData = loadedNodesData;
+    linksData = loadedLinksData;
+
+    parseLinksData(linksData, nodesData); // 确保 linksData 解析正确
+
+    const centralNode = nodesData.find(node => node.id === "阿姆羅·雷");
     
+    if (centralNode) {
+        calculateLayersAndSetOpacity(centralNode, nodesData, linksData); // 更新连线数和透明度
+        updateNodeList(); // 更新节点列表
+    } else {
+        console.error("未找到中央节点");
+    }
+	
 	const relationTypes = Array.from(new Set(linksData.map(link => link.relation)));
     const filtersDiv = d3.select("#relation-filters");
     relationTypes.forEach(type => {
@@ -39,13 +54,21 @@ Promise.all([
 
     d3.select("#toggle-opacity").on("change", updateDisplayMode);
 
-    function updateGraph() {
+
+
+function updateGraph() {
+
+
     // 清除並更新節點和連線，但保留 <defs>
     svg.selectAll("g.nodes, g.links, g.texts").remove();
 
     const selectedRelations = relationTypes.filter(type => {
-        return d3.select(`input[value="${type}"]`).property("checked");
-    });
+		const inputElement = d3.select(`input[value="${type}"]`);
+		if (!inputElement.empty()) {
+			return inputElement.property("checked");
+		}
+		return false; // 如果找不到元素，则返回默认未选中状态
+	});
     const filteredLinks = linksData.filter(link => selectedRelations.includes(link.relation));
 
     // 設置力導向模擬
@@ -59,7 +82,8 @@ Promise.all([
         .force("x", d3.forceX(width / 2).strength(0.1))
         .force("y", d3.forceY(height / 2).strength(0.1));
 
-   const link = svg.append("g")
+	// 更新连线
+    const link = svg.append("g")
         .attr("class", "links")
         .selectAll("line")
         .data(filteredLinks)
@@ -67,9 +91,8 @@ Promise.all([
         .attr("stroke-width", 2)
         .attr("stroke", "#999")
         .style("stroke-opacity", d => {
-            const sourceNode = d3.select(`#${CSS.escape(d.source.id)}`);
-            const sourceOpacity = sourceNode.empty() ? 0.3 : sourceNode.attr("data-opacity");
-            return sourceOpacity;
+            const targetOpacity = d.target.opacity !== undefined ? d.target.opacity : 0.3;
+            return targetOpacity;  // 使用 target 节点的透明度
         })
         .attr("class", "link-text")
         .attr("id", d => `${CSS.escape(d.source.id)}-${CSS.escape(d.target.id)}`)
@@ -85,6 +108,14 @@ Promise.all([
             }
             return null;
         });
+	
+	// 强制重新应用透明度到已存在的线段
+    svg.selectAll("line.link-text")
+        .style("stroke-opacity", d => {
+            const targetOpacity = d.target.opacity !== undefined ? d.target.opacity : 0.3;
+            return targetOpacity;  // 使用 target 节点的透明度
+        });
+
 
     const linkText = svg.append("g")
         .attr("class", "texts")
@@ -137,6 +168,7 @@ Promise.all([
         centralNode.fx = width / 2;
         centralNode.fy = height / 2;
         calculateLayersAndSetOpacity(centralNode, nodesData, filteredLinks); 
+		updateNodeList();  // 更新列表显示
     }
 
     // 設置模擬 "tick" 事件，讓圖表更新位置
@@ -170,6 +202,7 @@ Promise.all([
             targetNode.fy = height / 2;
 
             calculateLayersAndSetOpacity(targetNode, nodesData, filteredLinks);
+			updateNodeList();  // 更新列表显示
             simulation.alpha(1).restart();
 
             setTimeout(() => {
@@ -209,33 +242,47 @@ function initializeFilters() {
 function initializeArrows() {
     let defs = d3.select("svg").select("defs");
 
-    // 如果 defs 不存在，先創建它
+    // 如果 defs 不存在，創建一個
     if (defs.empty()) {
         defs = d3.select("svg").append("defs");
     }
 
-    // 定義箭頭標記，讓 refX 為 15 以遠離節點
+    // 小實心三角形箭頭（終點箭頭）
     defs.append("marker")
         .attr("id", "arrow-end")
         .attr("viewBox", "0 -5 10 10")
-        .attr("refX", 15)  // 增大 refX 讓箭頭遠離節點
+        .attr("refX", 6)  // 調整 refX 值讓箭頭更貼合線段
         .attr("refY", 0)
-        .attr("markerWidth", 6)
-        .attr("markerHeight", 6)
+        .attr("markerWidth", 4)  // 更小的 marker 寬度
+        .attr("markerHeight", 4)  // 更小的 marker 高度
         .attr("orient", "auto")
         .append("path")
-        .attr("d", "M0,-5L10,0L0,5")
-        .attr("fill", "#999");
+        .attr("d", "M0,-3L6,0L0,3")  // 簡單的三角形形狀
+        .attr("fill", "#666");
 
+    // 小實心三角形箭頭（起點箭頭）
     defs.append("marker")
         .attr("id", "arrow-start")
         .attr("viewBox", "0 -5 10 10")
-        .attr("refX", -5)  // 調整 refX 讓箭頭在起點遠離節點
+        .attr("refX", 4)
         .attr("refY", 0)
-        .attr("markerWidth", 6)
-        .attr("markerHeight", 6)
+        .attr("markerWidth", 4)
+        .attr("markerHeight", 4)
         .attr("orient", "auto")
         .append("path")
-        .attr("d", "M10,-5L0,0L10,5")
-        .attr("fill", "#999");
+        .attr("d", "M6,-3L0,0L6,3")
+        .attr("fill", "#666");
+}
+
+function parseLinksData(linksData, nodesData) {
+    const nodesById = new Map(nodesData.map(node => [node.id, node]));
+
+    linksData.forEach(link => {
+        if (typeof link.source === "string") {
+            link.source = nodesById.get(link.source);
+        }
+        if (typeof link.target === "string") {
+            link.target = nodesById.get(link.target);
+        }
+    });
 }
